@@ -1,0 +1,1271 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>贪吃蛇</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111418;
+      --panel: #1b2027;
+      --panel-2: #242b34;
+      --line: #323a45;
+      --text: #f2f5f7;
+      --muted: #aab3bf;
+      --snake: #42d392;
+      --snake-head: #26b978;
+      --apple: #ff5d5d;
+      --trap: #a974ff;
+      --monster: #ff9f43;
+      --button: #f2c94c;
+      --button-text: #1b1604;
+      --focus: #78dce8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      margin: 0;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(242, 201, 76, 0.14), transparent 32rem),
+        linear-gradient(145deg, #111418, #181d23 54%, #12151a);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+    }
+
+    main {
+      width: min(96vw, 1180px);
+      height: min(92vh, 680px);
+      display: grid;
+      grid-template-columns: minmax(280px, 340px) minmax(360px, 1fr);
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    .sidebar,
+    .playfield {
+      min-height: 0;
+      border: 1px solid var(--line);
+      background: rgba(27, 32, 39, 0.74);
+    }
+
+    .sidebar {
+      display: grid;
+      grid-template-rows: auto auto auto 1fr auto;
+      gap: 14px;
+      padding: 18px;
+    }
+
+    .playfield {
+      display: grid;
+      place-items: center;
+      padding: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 40px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    select,
+    input {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 8px 10px;
+      background: var(--panel-2);
+      color: var(--text);
+      font: 700 15px/1.2 "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+    }
+
+    select:focus,
+    input:focus,
+    button:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    .buffs {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      background: rgba(36, 43, 52, 0.64);
+    }
+
+    .buffs[hidden] {
+      display: none;
+    }
+
+    .buff-title {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .buff {
+      min-height: 46px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      align-items: center;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.3;
+      cursor: pointer;
+    }
+
+    .buff input {
+      width: 18px;
+      min-height: 18px;
+      accent-color: var(--button);
+    }
+
+    .status-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status-bar div {
+      min-height: 52px;
+      display: grid;
+      align-content: center;
+      gap: 2px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      background: rgba(36, 43, 52, 0.58);
+    }
+
+    .status-bar strong {
+      color: var(--text);
+      font-size: 20px;
+    }
+
+    button {
+      width: 100%;
+      min-height: 42px;
+      border: 0;
+      border-radius: 7px;
+      padding: 12px 18px;
+      background: var(--button);
+      color: var(--button-text);
+      font: 700 16px/1 "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+      cursor: pointer;
+    }
+
+    button:hover {
+      filter: brightness(1.06);
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .board-wrap {
+      width: min(100%, 620px, 78vh);
+      aspect-ratio: 1;
+      position: relative;
+      border: 2px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.32);
+    }
+
+    .board {
+      width: 100%;
+      height: 100%;
+      display: grid;
+    }
+
+    .cell {
+      border-right: 1px solid rgba(255, 255, 255, 0.07);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      position: relative;
+    }
+
+    .cell.edge-right {
+      border-right: 0;
+    }
+
+    .cell.edge-bottom {
+      border-bottom: 0;
+    }
+
+    .snake::after,
+    .apple::after,
+    .trap::after,
+    .monster::after {
+      content: "";
+      position: absolute;
+    }
+
+    .snake::after {
+      inset: 14%;
+      border-radius: 5px;
+      background: var(--snake);
+      box-shadow: inset 0 -5px rgba(0, 0, 0, 0.12);
+    }
+
+    .head::after {
+      background: var(--snake-head);
+    }
+
+    .apple::after {
+      inset: 20%;
+      border-radius: 50%;
+      background: var(--apple);
+      box-shadow: inset -5px -6px rgba(0, 0, 0, 0.18);
+    }
+
+    .trap::after {
+      inset: 22%;
+      border-radius: 3px;
+      background:
+        linear-gradient(45deg, transparent 42%, var(--trap) 43%, var(--trap) 57%, transparent 58%),
+        linear-gradient(-45deg, transparent 42%, var(--trap) 43%, var(--trap) 57%, transparent 58%);
+      filter: drop-shadow(0 0 5px rgba(169, 116, 255, 0.45));
+    }
+
+    .monster::after {
+      inset: 16%;
+      border-radius: 6px;
+      background: var(--monster);
+      box-shadow: inset 0 -5px rgba(0, 0, 0, 0.16), 0 0 8px rgba(255, 159, 67, 0.35);
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(17, 20, 24, 0.72);
+      text-align: center;
+    }
+
+    .overlay[hidden],
+    .choice-grid[hidden],
+    #overlayButton[hidden] {
+      display: none;
+    }
+
+    .message {
+      width: min(92%, 390px);
+      display: grid;
+      gap: 14px;
+      justify-items: center;
+    }
+
+    .message p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      white-space: pre-line;
+    }
+
+    .message button {
+      width: auto;
+      min-width: 132px;
+    }
+
+    .choice-grid {
+      width: 100%;
+      display: grid;
+      gap: 8px;
+    }
+
+    .choice-grid button {
+      width: 100%;
+      min-height: 38px;
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      line-height: 1.25;
+    }
+
+    @media (max-width: 760px) {
+      main {
+        width: 96vw;
+        height: 96vh;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+        gap: 10px;
+      }
+
+      .sidebar {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto auto;
+        gap: 10px;
+        padding: 10px;
+      }
+
+      h1,
+      .hint {
+        display: none;
+      }
+
+      .buffs,
+      .status-bar {
+        grid-column: 1 / -1;
+      }
+
+      .playfield {
+        padding: 10px;
+      }
+
+      .board-wrap {
+        width: min(100%, 62vh);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <aside class="sidebar">
+      <h1>贪吃蛇</h1>
+
+      <section class="controls" aria-label="游戏设置">
+        <label>
+          模式
+          <select id="modeSelect">
+            <option value="easy">简单模式</option>
+            <option value="hard">困难模式</option>
+            <option value="hex">海克斯模式</option>
+            <option value="rogue">肉鸽模式</option>
+          </select>
+        </label>
+
+        <label id="targetControl">
+          胜利长度
+          <input id="targetInput" type="number" min="4" max="139" value="20">
+        </label>
+
+        <button id="rulesButton" type="button" hidden>规则说明</button>
+
+        <button id="startButton" type="button">开始游戏</button>
+      </section>
+
+      <section id="buffPanel" class="buffs" aria-label="海克斯增益" hidden>
+        <p class="buff-title">海克斯增益，三选一</p>
+        <label class="buff">
+          <input id="trapBuff" name="hexBuff" type="radio" value="trap" checked>
+          <span>吃陷阱，长度 -1</span>
+        </label>
+        <label class="buff">
+          <input id="wrapBuff" name="hexBuff" type="radio" value="wrap">
+          <span>撞边缘后从另一边出现</span>
+        </label>
+        <label class="buff">
+          <input id="lifeBuff" name="hexBuff" type="radio" value="life">
+          <span>拥有三条命</span>
+        </label>
+      </section>
+
+      <section class="status-bar" aria-label="游戏状态">
+        <div><span id="metricLabel">长度</span> <strong><span id="metricValue">3</span>/<span id="targetLength">20</span></strong></div>
+        <div>模式 <strong id="modeText">简单模式</strong></div>
+        <div>速度 <strong><span id="speedText">1.0</span>x</strong></div>
+        <div>状态 <strong><span id="stateText">未开始</span><span id="lifeText"></span></strong></div>
+      </section>
+
+      <p class="hint">方向键或 WASD 控制方向，空格暂停或继续。肉鸽模式每关后选择一个累计 buff。</p>
+    </aside>
+
+    <section class="playfield">
+      <section id="boardWrap" class="board-wrap" aria-label="游戏区域">
+        <div id="board" class="board"></div>
+        <div id="overlay" class="overlay">
+          <div class="message">
+            <p id="overlayText">选择模式后开始游戏</p>
+            <div id="choicePanel" class="choice-grid" hidden></div>
+            <button id="overlayButton" type="button">开始游戏</button>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const baseTickMs = 220;
+    const monsterTickMs = Math.round(baseTickMs / 0.5);
+    const modes = {
+      easy: { label: "简单模式", size: 9, speed: 1, traps: 0, apples: 1 },
+      hard: { label: "困难模式", size: 9, speed: 1.5, traps: 2, apples: 1 },
+      hex: { label: "海克斯模式", size: 12, speed: 1, traps: 5, apples: 3 },
+      rogue: { label: "肉鸽模式", size: 10, speed: 1, traps: 3, apples: 1 },
+    };
+    const hexTrapLimit = 5;
+    const hexAppleLimit = 3;
+    const rogueSizes = [10, 11, 12, 13, 15];
+    const rogueGoals = [5, 6, 7, 8, 10];
+    const rogueBuffCatalog = [
+      { key: "eatTrap", label: "吃陷阱，长度 -1" },
+      { key: "wrap", label: "穿透区域边缘" },
+      { key: "lives", label: "三条命" },
+      { key: "appleLimit", label: "苹果上限 +2" },
+      { key: "eatMonster", label: "可以吃怪物" },
+    ];
+
+    const board = document.querySelector("#board");
+    const overlay = document.querySelector("#overlay");
+    const overlayText = document.querySelector("#overlayText");
+    const overlayButton = document.querySelector("#overlayButton");
+    const choicePanel = document.querySelector("#choicePanel");
+    const startButton = document.querySelector("#startButton");
+    const rulesButton = document.querySelector("#rulesButton");
+    const modeSelect = document.querySelector("#modeSelect");
+    const targetControl = document.querySelector("#targetControl");
+    const targetInput = document.querySelector("#targetInput");
+    const buffPanel = document.querySelector("#buffPanel");
+    const trapBuffInput = document.querySelector("#trapBuff");
+    const wrapBuffInput = document.querySelector("#wrapBuff");
+    const lifeBuffInput = document.querySelector("#lifeBuff");
+    const metricLabel = document.querySelector("#metricLabel");
+    const metricValue = document.querySelector("#metricValue");
+    const targetLengthText = document.querySelector("#targetLength");
+    const modeText = document.querySelector("#modeText");
+    const speedText = document.querySelector("#speedText");
+    const stateText = document.querySelector("#stateText");
+    const lifeText = document.querySelector("#lifeText");
+
+    let cells = [];
+    let size = 9;
+    let snake;
+    let apples = [];
+    let traps = [];
+    let monsters = [];
+    let direction;
+    let pendingDirection;
+    let moveTimerId;
+    let hexSpeedTimerId;
+    let hexTrapTimerId;
+    let hexAppleTimerId;
+    let monsterTimerId;
+    let gameState = "ready";
+    let currentMode = "easy";
+    let winLength = 20;
+    let speedMultiplier = 1;
+    let lives = 1;
+    let rogueLevel = 1;
+    let rogueApplesEaten = 0;
+    let rogueBuffs = new Set();
+    let buffs = { eatTrap: false, wrap: false, lives: false, appleLimit: false, eatMonster: false };
+    let overlayPurpose = "action";
+
+    function sameCell(a, b) {
+      return a.x === b.x && a.y === b.y;
+    }
+
+    function cellIndex(cell) {
+      return cell.y * size + cell.x;
+    }
+
+    function isOpposite(next, current) {
+      return next.x + current.x === 0 && next.y + current.y === 0;
+    }
+
+    function createBoard(nextSize) {
+      size = nextSize;
+      board.innerHTML = "";
+      board.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+      board.style.gridTemplateRows = `repeat(${size}, 1fr)`;
+      cells = [];
+
+      for (let i = 0; i < size * size; i += 1) {
+        const cell = document.createElement("div");
+        const x = i % size;
+        const y = Math.floor(i / size);
+        cell.className = "cell";
+        if (x === size - 1) {
+          cell.classList.add("edge-right");
+        }
+        if (y === size - 1) {
+          cell.classList.add("edge-bottom");
+        }
+        board.appendChild(cell);
+        cells.push(cell);
+      }
+    }
+
+    function getTickMs() {
+      return Math.max(60, Math.round(baseTickMs / speedMultiplier));
+    }
+
+    function maxTargetForMode(mode) {
+      if (mode === "rogue") {
+        return rogueGoals[0];
+      }
+      const config = modes[mode];
+      return config.size * config.size - (mode === "hex" ? hexTrapLimit : config.traps);
+    }
+
+    function clampTarget(value) {
+      const maxTarget = maxTargetForMode(currentMode);
+      const parsed = Number.parseInt(value, 10);
+      if (Number.isNaN(parsed)) {
+        return Math.min(20, maxTarget);
+      }
+      return Math.min(maxTarget, Math.max(4, parsed));
+    }
+
+    function readSettings() {
+      currentMode = modeSelect.value;
+      targetInput.disabled = currentMode === "rogue" || gameState === "playing" || gameState === "paused";
+      targetInput.max = maxTargetForMode(currentMode);
+      if (currentMode !== "rogue") {
+        winLength = clampTarget(targetInput.value);
+        targetInput.value = winLength;
+      }
+      buffs = {
+        eatTrap: currentMode === "hex" && trapBuffInput.checked,
+        wrap: currentMode === "hex" && wrapBuffInput.checked,
+        lives: currentMode === "hex" && lifeBuffInput.checked,
+        appleLimit: false,
+        eatMonster: false,
+      };
+      if (currentMode === "rogue") {
+        buffs = {
+          eatTrap: rogueBuffs.has("eatTrap"),
+          wrap: rogueBuffs.has("wrap"),
+          lives: rogueBuffs.has("lives"),
+          appleLimit: rogueBuffs.has("appleLimit"),
+          eatMonster: rogueBuffs.has("eatMonster"),
+        };
+      }
+    }
+
+    function isOccupiedBySnake(cell) {
+      return snake.some((part) => sameCell(part, cell));
+    }
+
+    function isOccupiedByTrap(cell) {
+      return traps.some((trap) => sameCell(trap, cell));
+    }
+
+    function isOccupiedByApple(cell) {
+      return apples.some((apple) => sameCell(apple, cell));
+    }
+
+    function isOccupiedByMonster(cell) {
+      return monsters.some((monster) => monster.parts.some((part) => sameCell(part, cell)));
+    }
+
+    function randomFreeCell({ allowMonster = false } = {}) {
+      const freeCells = [];
+
+      for (let y = 0; y < size; y += 1) {
+        for (let x = 0; x < size; x += 1) {
+          const candidate = { x, y };
+          const blocked =
+            isOccupiedBySnake(candidate) ||
+            isOccupiedByTrap(candidate) ||
+            isOccupiedByApple(candidate) ||
+            (!allowMonster && isOccupiedByMonster(candidate));
+          if (!blocked) {
+            freeCells.push(candidate);
+          }
+        }
+      }
+
+      if (freeCells.length === 0) {
+        return null;
+      }
+      return freeCells[Math.floor(Math.random() * freeCells.length)];
+    }
+
+    function addApple() {
+      const cell = randomFreeCell();
+      if (cell) {
+        apples.push(cell);
+      }
+    }
+
+    function addTrap() {
+      const cell = randomFreeCell();
+      if (cell) {
+        traps.push(cell);
+      }
+    }
+
+    function fillApples(count) {
+      while (apples.length < count) {
+        const before = apples.length;
+        addApple();
+        if (apples.length === before) {
+          break;
+        }
+      }
+    }
+
+    function fillTraps(count) {
+      while (traps.length < count) {
+        const before = traps.length;
+        addTrap();
+        if (traps.length === before) {
+          break;
+        }
+      }
+    }
+
+    function monsterCountForLevel() {
+      return currentMode === "rogue" && rogueLevel >= 2 ? rogueLevel - 1 : 0;
+    }
+
+    function createMonster(id) {
+      const fallback = { x: Math.max(1, size - 2 - id), y: Math.max(1, id + 1) };
+      const head = randomFreeCell({ allowMonster: false }) || fallback;
+      const tail = { x: Math.max(0, head.x - 1), y: head.y };
+      return { parts: [head, tail] };
+    }
+
+    function createMonsters() {
+      monsters = [];
+      for (let i = 0; i < monsterCountForLevel(); i += 1) {
+        monsters.push(createMonster(i));
+      }
+    }
+
+    function render() {
+      cells.forEach((cell) => {
+        cell.className = cell.className
+          .replace(/\s?(snake|head|apple|trap|monster)/g, "")
+          .trim();
+      });
+
+      traps.forEach((trap) => cells[cellIndex(trap)].classList.add("trap"));
+      monsters.forEach((monster) => {
+        monster.parts.forEach((part) => cells[cellIndex(part)].classList.add("monster"));
+      });
+      snake.forEach((part, index) => {
+        const cell = cells[cellIndex(part)];
+        cell.classList.add("snake");
+        if (index === 0) {
+          cell.classList.add("head");
+        }
+      });
+      apples.forEach((apple) => cells[cellIndex(apple)].classList.add("apple"));
+
+      if (currentMode === "rogue") {
+        metricLabel.textContent = "苹果";
+        metricValue.textContent = rogueApplesEaten;
+        targetLengthText.textContent = rogueGoals[rogueLevel - 1];
+      } else {
+        metricLabel.textContent = "长度";
+        metricValue.textContent = snake.length;
+        targetLengthText.textContent = winLength;
+      }
+
+      modeText.textContent = currentMode === "rogue"
+        ? `${modes[currentMode].label} ${rogueLevel}/5`
+        : modes[currentMode].label;
+      speedText.textContent = speedMultiplier.toFixed(1);
+      stateText.textContent = {
+        ready: "未开始",
+        playing: "游戏中",
+        paused: "已暂停",
+        choosing: "选增益",
+        won: "胜利",
+        lost: "失败",
+      }[gameState];
+      lifeText.textContent = currentMode === "hex" && buffs.lives || currentMode === "rogue"
+        ? ` 命 ${lives}`
+        : "";
+    }
+
+    function clearChoices() {
+      choicePanel.innerHTML = "";
+      choicePanel.hidden = true;
+      overlayButton.hidden = false;
+    }
+
+    function showOverlay(text, buttonText = "开始游戏", purpose = "action") {
+      clearChoices();
+      overlayPurpose = purpose;
+      overlayText.textContent = text;
+      overlayButton.textContent = buttonText;
+      overlay.hidden = false;
+    }
+
+    function hideOverlay() {
+      overlay.hidden = true;
+      clearChoices();
+    }
+
+    function showBuffChoices() {
+      gameState = "choosing";
+      stopTimers();
+      render();
+      overlayText.textContent = `第 ${rogueLevel} 关通过，选择一个增益`;
+      overlayPurpose = "choice";
+      choicePanel.innerHTML = "";
+      rogueBuffCatalog
+        .filter((buff) => !rogueBuffs.has(buff.key))
+        .forEach((buff) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = buff.label;
+          button.dataset.buff = buff.key;
+          choicePanel.appendChild(button);
+        });
+      overlayButton.hidden = true;
+      choicePanel.hidden = false;
+      overlay.hidden = false;
+    }
+
+    function stopMoveTimer() {
+      if (moveTimerId) {
+        window.clearInterval(moveTimerId);
+        moveTimerId = null;
+      }
+    }
+
+    function stopHexTimers() {
+      [hexSpeedTimerId, hexTrapTimerId, hexAppleTimerId].forEach((timerId) => {
+        if (timerId) {
+          window.clearInterval(timerId);
+        }
+      });
+      hexSpeedTimerId = null;
+      hexTrapTimerId = null;
+      hexAppleTimerId = null;
+    }
+
+    function stopMonsterTimer() {
+      if (monsterTimerId) {
+        window.clearInterval(monsterTimerId);
+        monsterTimerId = null;
+      }
+    }
+
+    function stopTimers() {
+      stopMoveTimer();
+      stopHexTimers();
+      stopMonsterTimer();
+    }
+
+    function startMoveTimer() {
+      stopMoveTimer();
+      moveTimerId = window.setInterval(tick, getTickMs());
+    }
+
+    function startHexTimers() {
+      stopHexTimers();
+      if (currentMode !== "hex") {
+        return;
+      }
+
+      hexSpeedTimerId = window.setInterval(() => {
+        if (gameState !== "playing" || speedMultiplier >= 3) {
+          return;
+        }
+        speedMultiplier = Math.min(3, Number((speedMultiplier + 0.1).toFixed(1)));
+        startMoveTimer();
+        render();
+      }, 1000);
+
+      hexTrapTimerId = window.setInterval(() => {
+        if (gameState === "playing" && traps.length < hexTrapLimit) {
+          addTrap();
+          render();
+        }
+      }, 5000);
+
+      hexAppleTimerId = window.setInterval(() => {
+        if (gameState === "playing" && apples.length < hexAppleLimit) {
+          addApple();
+          render();
+        }
+      }, 5000);
+    }
+
+    function startMonsterTimer() {
+      stopMonsterTimer();
+      if (currentMode === "rogue" && monsters.length > 0) {
+        monsterTimerId = window.setInterval(moveMonsters, monsterTickMs);
+      }
+    }
+
+    function startTimers() {
+      startMoveTimer();
+      startHexTimers();
+      startMonsterTimer();
+    }
+
+    function setSettingsDisabled(disabled) {
+      modeSelect.disabled = disabled;
+      targetInput.disabled = disabled || currentMode === "rogue";
+      rulesButton.disabled = disabled;
+      trapBuffInput.disabled = disabled;
+      wrapBuffInput.disabled = disabled;
+      lifeBuffInput.disabled = disabled;
+    }
+
+    function initialSnake() {
+      const startY = Math.floor(size / 2);
+      const startX = Math.floor(size / 2);
+      return [
+        { x: startX, y: startY },
+        { x: startX - 1, y: startY },
+        { x: startX - 2, y: startY },
+      ];
+    }
+
+    function resetSnakeAfterLifeLoss() {
+      snake = initialSnake();
+      direction = { x: 1, y: 0 };
+      pendingDirection = direction;
+      traps = traps.filter((trap) => !isOccupiedBySnake(trap));
+      apples = apples.filter((apple) => !isOccupiedBySnake(apple));
+      monsters = monsters.filter((monster) => !monster.parts.some((part) => isOccupiedBySnake(part)));
+      if ((currentMode === "hex" || currentMode === "rogue") && apples.length === 0) {
+        addApple();
+      }
+      if (currentMode === "rogue") {
+        createMonsters();
+      }
+    }
+
+    function resetGame() {
+      readSettings();
+      if (currentMode === "rogue") {
+        rogueLevel = 1;
+        rogueBuffs = new Set();
+        lives = 1;
+        setupRogueLevel();
+      } else {
+        createBoard(modes[currentMode].size);
+        snake = initialSnake();
+        direction = { x: 1, y: 0 };
+        pendingDirection = direction;
+        traps = [];
+        apples = [];
+        monsters = [];
+        speedMultiplier = modes[currentMode].speed;
+        lives = buffs.lives ? 3 : 1;
+
+        if (currentMode === "hard") {
+          fillTraps(modes.hard.traps);
+        }
+        if (currentMode === "hex") {
+          fillTraps(hexTrapLimit);
+          fillApples(hexAppleLimit);
+        } else {
+          fillApples(1);
+        }
+      }
+
+      gameState = "playing";
+      setSettingsDisabled(true);
+      hideOverlay();
+      startButton.textContent = "重新开始";
+      startTimers();
+      render();
+    }
+
+    function setupRogueLevel() {
+      readSettings();
+      createBoard(rogueSizes[rogueLevel - 1]);
+      snake = initialSnake();
+      direction = { x: 1, y: 0 };
+      pendingDirection = direction;
+      traps = [];
+      apples = [];
+      monsters = [];
+      speedMultiplier = 1;
+      rogueApplesEaten = 0;
+      if (buffs.lives) {
+        lives = Math.max(lives, 3);
+      }
+      fillTraps(rogueLevel + 2);
+      fillApples(buffs.appleLimit ? 3 : 1);
+      createMonsters();
+    }
+
+    function endGame(state) {
+      gameState = state;
+      stopTimers();
+      setSettingsDisabled(false);
+      render();
+      const text = currentMode === "rogue" && state === "won"
+        ? "五关全部通过，肉鸽模式胜利！"
+        : state === "won"
+          ? `长度达到 ${winLength}，游戏胜利！`
+          : "游戏结束";
+      showOverlay(text, "重新开始");
+    }
+
+    function loseLifeOrEnd() {
+      if (lives > 1) {
+        lives -= 1;
+        resetSnakeAfterLifeLoss();
+        render();
+        return;
+      }
+      endGame("lost");
+    }
+
+    function togglePause() {
+      if (gameState === "playing") {
+        gameState = "paused";
+        stopTimers();
+        render();
+        showOverlay("已暂停", "继续游戏");
+        return;
+      }
+
+      if (gameState === "paused") {
+        gameState = "playing";
+        hideOverlay();
+        startTimers();
+        render();
+      }
+    }
+
+    function maybeWrap(head) {
+      if ((currentMode === "hex" || currentMode === "rogue") && buffs.wrap) {
+        return {
+          x: (head.x + size) % size,
+          y: (head.y + size) % size,
+        };
+      }
+      return head;
+    }
+
+    function trimSnakeByOne() {
+      if (snake.length > 1) {
+        snake.pop();
+        return true;
+      }
+      return false;
+    }
+
+    function handleTrapAt(nextHead, trapIndex) {
+      if (!buffs.eatTrap) {
+        loseLifeOrEnd();
+        return true;
+      }
+      if (snake.length <= 1) {
+        traps.splice(trapIndex, 1);
+        loseLifeOrEnd();
+        return true;
+      }
+      traps.splice(trapIndex, 1);
+      snake.unshift(nextHead);
+      trimSnakeByOne();
+      trimSnakeByOne();
+      render();
+      return true;
+    }
+
+    function handleMonsterCollision(nextHead) {
+      const monsterIndex = monsters.findIndex((monster) => monster.parts.some((part) => sameCell(part, nextHead)));
+      if (monsterIndex === -1) {
+        return false;
+      }
+      if (buffs.eatMonster) {
+        monsters.splice(monsterIndex, 1);
+        snake.unshift(nextHead);
+        snake.pop();
+        render();
+        return true;
+      }
+      loseLifeOrEnd();
+      return true;
+    }
+
+    function completeRogueLevelIfNeeded() {
+      if (currentMode !== "rogue" || rogueApplesEaten < rogueGoals[rogueLevel - 1]) {
+        return false;
+      }
+      if (rogueLevel >= 5) {
+        endGame("won");
+        return true;
+      }
+      showBuffChoices();
+      return true;
+    }
+
+    function tick() {
+      direction = pendingDirection;
+      const head = snake[0];
+      let nextHead = {
+        x: head.x + direction.x,
+        y: head.y + direction.y,
+      };
+
+      const outOfBounds = nextHead.x < 0 || nextHead.x >= size || nextHead.y < 0 || nextHead.y >= size;
+      if (outOfBounds && !buffs.wrap) {
+        loseLifeOrEnd();
+        return;
+      }
+      nextHead = maybeWrap(nextHead);
+
+      const trapIndex = traps.findIndex((trap) => sameCell(trap, nextHead));
+      if (trapIndex !== -1) {
+        handleTrapAt(nextHead, trapIndex);
+        return;
+      }
+
+      if (handleMonsterCollision(nextHead)) {
+        return;
+      }
+
+      const appleIndex = apples.findIndex((apple) => sameCell(apple, nextHead));
+      const willEatApple = appleIndex !== -1;
+      const bodyToCheck = willEatApple ? snake : snake.slice(0, -1);
+
+      if (bodyToCheck.some((part) => sameCell(part, nextHead))) {
+        loseLifeOrEnd();
+        return;
+      }
+
+      snake.unshift(nextHead);
+
+      if (willEatApple) {
+        apples.splice(appleIndex, 1);
+        if (currentMode === "rogue") {
+          rogueApplesEaten += 1;
+          if (completeRogueLevelIfNeeded()) {
+            return;
+          }
+          if (apples.length === 0) {
+            addApple();
+          }
+          fillApples(buffs.appleLimit ? 3 : 1);
+        } else {
+          if (snake.length >= winLength) {
+            endGame("won");
+            return;
+          }
+          if (currentMode === "hex" && apples.length === 0) {
+            addApple();
+          } else if (currentMode !== "hex") {
+            addApple();
+          }
+        }
+      } else {
+        snake.pop();
+      }
+
+      render();
+    }
+
+    function distanceToSnakeHead(cell) {
+      return Math.abs(cell.x - snake[0].x) + Math.abs(cell.y - snake[0].y);
+    }
+
+    function nextMonsterHead(monster) {
+      const head = monster.parts[0];
+      const options = [
+        { x: head.x + 1, y: head.y },
+        { x: head.x - 1, y: head.y },
+        { x: head.x, y: head.y + 1 },
+        { x: head.x, y: head.y - 1 },
+      ].filter((cell) => cell.x >= 0 && cell.x < size && cell.y >= 0 && cell.y < size);
+
+      options.sort((a, b) => distanceToSnakeHead(a) - distanceToSnakeHead(b));
+      return options[0] || head;
+    }
+
+    function resolveMonsterHits() {
+      const hitIndex = monsters.findIndex((monster) =>
+        monster.parts.some((part) => snake.some((segment) => sameCell(part, segment)))
+      );
+      if (hitIndex === -1) {
+        return false;
+      }
+      if (buffs.eatMonster) {
+        monsters.splice(hitIndex, 1);
+        render();
+        return true;
+      }
+      loseLifeOrEnd();
+      return true;
+    }
+
+    function moveMonsters() {
+      if (gameState !== "playing") {
+        return;
+      }
+      monsters = monsters.map((monster) => {
+        const nextHead = nextMonsterHead(monster);
+        return { parts: [nextHead, monster.parts[0]] };
+      });
+      if (!resolveMonsterHits()) {
+        render();
+      }
+    }
+
+    function setDirection(nextDirection) {
+      if (gameState !== "playing") {
+        return;
+      }
+
+      if (!isOpposite(nextDirection, direction)) {
+        pendingDirection = nextDirection;
+      }
+    }
+
+    function handleActionButton() {
+      if (overlayPurpose === "rules") {
+        overlayPurpose = "action";
+        if (gameState === "ready") {
+          showOverlay("选择模式后开始游戏", "开始游戏");
+        } else {
+          hideOverlay();
+        }
+        return;
+      }
+
+      if (gameState === "paused") {
+        togglePause();
+      } else {
+        resetGame();
+      }
+    }
+
+    function showRogueRules() {
+      showOverlay(
+        [
+          "肉鸽模式规则",
+          "共 5 关，区域依次为 10x10、11x11、12x12、13x13、15x15。",
+          "每关目标是吃指定数量苹果：5、6、7、8、10。",
+          "每通过一关可选择一个累计增益。",
+          "可选增益：吃陷阱但长度 -1、穿透边缘、三条命、苹果上限 +2、可以吃怪物。",
+          "第 2 关开始出现 1x2 怪物，速度 0.5x，并追踪玩家；每多一关多一只。",
+          "怪物碰到蛇任意部位会扣 1 条命；有吃怪物增益时可以消灭怪物。",
+          "有吃陷阱增益时，蛇长度为 1 再吃陷阱会扣 1 条命。"
+        ].join("\n"),
+        "知道了",
+        "rules"
+      );
+    }
+
+    function syncModeUI() {
+      currentMode = modeSelect.value;
+      buffPanel.hidden = currentMode !== "hex";
+      targetControl.hidden = currentMode === "rogue";
+      rulesButton.hidden = currentMode !== "rogue";
+      targetInput.disabled = currentMode === "rogue";
+      targetInput.max = maxTargetForMode(currentMode);
+      readSettings();
+      createBoard(currentMode === "rogue" ? rogueSizes[0] : modes[currentMode].size);
+      snake = initialSnake();
+      traps = [];
+      apples = [];
+      monsters = [];
+      speedMultiplier = modes[currentMode].speed;
+      rogueLevel = 1;
+      rogueApplesEaten = 0;
+      lives = currentMode === "hex" && lifeBuffInput.checked ? 3 : 1;
+      if (currentMode === "rogue") {
+        fillApples(1);
+      } else {
+        fillApples(currentMode === "hex" ? hexAppleLimit : 1);
+      }
+      render();
+    }
+
+    document.addEventListener("keydown", (event) => {
+      const keyMap = {
+        ArrowUp: { x: 0, y: -1 },
+        w: { x: 0, y: -1 },
+        W: { x: 0, y: -1 },
+        ArrowDown: { x: 0, y: 1 },
+        s: { x: 0, y: 1 },
+        S: { x: 0, y: 1 },
+        ArrowLeft: { x: -1, y: 0 },
+        a: { x: -1, y: 0 },
+        A: { x: -1, y: 0 },
+        ArrowRight: { x: 1, y: 0 },
+        d: { x: 1, y: 0 },
+        D: { x: 1, y: 0 },
+      };
+
+      if (event.code === "Space") {
+        event.preventDefault();
+        togglePause();
+        return;
+      }
+
+      if (keyMap[event.key]) {
+        event.preventDefault();
+        setDirection(keyMap[event.key]);
+      }
+    });
+
+    modeSelect.addEventListener("change", syncModeUI);
+    targetInput.addEventListener("change", () => {
+      readSettings();
+      render();
+    });
+    [trapBuffInput, wrapBuffInput, lifeBuffInput].forEach((input) => {
+      input.addEventListener("change", () => {
+        readSettings();
+        lives = buffs.lives ? 3 : 1;
+        render();
+      });
+    });
+    choicePanel.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-buff]");
+      if (!button) {
+        return;
+      }
+      rogueBuffs.add(button.dataset.buff);
+      rogueLevel += 1;
+      setupRogueLevel();
+      gameState = "playing";
+      hideOverlay();
+      startTimers();
+      render();
+    });
+    startButton.addEventListener("click", resetGame);
+    rulesButton.addEventListener("click", showRogueRules);
+    overlayButton.addEventListener("click", handleActionButton);
+
+    createBoard(modes.easy.size);
+    snake = initialSnake();
+    direction = { x: 1, y: 0 };
+    pendingDirection = direction;
+    fillApples(1);
+    readSettings();
+    render();
+  </script>
+</body>
+</html>
